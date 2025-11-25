@@ -54,9 +54,6 @@ function getS3KeyFromUrl(url) {
 
 // -------------------- 👤 REGISTER --------------------
 export const registerUser = (req, res) => {
-  console.log("📥 Incoming Body:", req.body);
-  console.log("📸 File Upload:", req.file);
-
   const { fullName, email, phone, password } = req.body;
   const profileUrl = req.file?.location || null;
 
@@ -66,17 +63,46 @@ export const registerUser = (req, res) => {
 
   const hashedPassword = bcrypt.hashSync(password, 10);
 
-  const sql = `INSERT INTO customers (fullName, email, phone, password, profile) VALUES (?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO customers (fullName, email, phone, password, profile) 
+               VALUES (?, ?, ?, ?, ?)`;
 
   db.query(sql, [fullName, email, phone, hashedPassword, profileUrl], (err, result) => {
+
     if (err) {
       console.error("❌ Register error:", err);
-      return res.status(500).json({ success: false, message: "Database error" });
+
+      // 🔥 CHECK FOR DUPLICATE ENTRY ERROR
+      if (err.code === "ER_DUP_ENTRY") {
+        if (err.sqlMessage.includes("email")) {
+          return res.status(409).json({
+            success: false,
+            message: "Email already exists",
+          });
+        }
+        if (err.sqlMessage.includes("phone")) {
+          return res.status(409).json({
+            success: false,
+            message: "Phone number already exists",
+          });
+        }
+      }
+
+      // Other DB errors
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
     }
+
     console.log("✅ User Registered:", result.insertId);
-    res.json({ success: true, message: "User registered successfully" });
+
+    return res.json({
+      success: true,
+      message: "User registered successfully",
+    });
   });
 };
+
 
 // -------------------- 🔐 LOGIN --------------------
 export const loginUser = (req, res) => {
