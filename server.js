@@ -42,7 +42,7 @@ io.on("connection", (socket) => {
 // ----------- MIDDLEWARES -------------
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://10.0.2.2:5173"],
+    origin: ["http://localhost:5173", "http://10.0.2.2:5173","https://abs-admin-dashboard-frontend.vercel.app", "https://jewellery.aspireths.com"],
     credentials: true,
   })
 );
