@@ -25,7 +25,7 @@ const server = http.createServer(app);
 // Initialize socket
 io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://10.0.2.2:5173","https://abs-admin-dashboard-frontend.vercel.app"], // React web + Android emulator
+    origin: ["http://localhost:5173", "http://10.0.2.2:5173","https://abs-admin-dashboard-frontend.vercel.app", "https://jewellery.aspireths.com"], // React web + Android emulator
     methods: ["GET", "POST"],
   },
 });
