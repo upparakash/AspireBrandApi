@@ -1,9 +1,16 @@
-const express = require("express");
-const router = express.Router();
-const stock = require("../controllers/StockController");
+import express from "express";
+import { 
+  getStocks, 
+  getStockById, 
+  updateStock, 
+  getCategories 
+} from "../controllers/StockController.js";
 
-router.get("/getStocks", stock.getStocks);
-router.get("/categories", stock.getCategories);
-router.post("/updateStock", stock.updateStock);
-router.get("/getStockById", stock.getStockById );
-module.exports = router;
+const router = express.Router();
+
+router.get("/getStocks", getStocks);
+router.get("/categories", getCategories);
+router.post("/updateStock", updateStock);
+router.get("/getStockById", getStockById);
+
+export default router;
