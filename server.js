@@ -11,7 +11,7 @@ import productCategoryRoutes from "./routes/productCategoryRoutes.js";
 import addSubCategoryRoutes from "./routes/addSubCategoryRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import customerRegisterRoutes from "./routes/CustomerRegisterRouter.js";
-
+import StockRouter  from './routes/StockRouter.js';
 dotenv.config();
 
 const app = express();
@@ -25,8 +25,8 @@ const server = http.createServer(app);
 // Initialize socket
 io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://10.0.2.2:5173","https://abs-admin-dashboard-frontend.vercel.app", "https://jewellery.aspireths.com"], // React web + Android emulator
-    methods: ["GET", "POST"],
+     origin: ["http://localhost:5173", "http://10.0.2.2:5173","https://abs-admin-dashboard-frontend.vercel.app", "https://jewellery.aspireths.com"],
+    credentials: true,
   },
 });
 
@@ -60,6 +60,7 @@ app.use("/api/productCategories", productCategoryRoutes);
 app.use("/api/subcategories", addSubCategoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/customers", customerRegisterRoutes);
+app.use("/api/stock", StockRouter);
 
 // ----------- START SERVER -------------
 const PORT = process.env.PORT || 4000;
