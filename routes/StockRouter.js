@@ -1,13 +1,14 @@
 import express from "express";
-import { 
-  getStocks, 
-  getStockById, 
-  updateStock, 
-  getCategories 
+import {
+  getStocks,
+  getCategories,
+  updateStock,
+  getStockById
 } from "../controllers/StockController.js";
 
 const router = express.Router();
 
+// Routes
 router.get("/getStocks", getStocks);
 router.get("/categories", getCategories);
 router.post("/updateStock", updateStock);

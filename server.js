@@ -4,7 +4,6 @@ import cors from "cors";
 import path from "path";
 import http from "http";
 import { Server } from "socket.io";
-
 import authRoutes from "./routes/authRoutes.js";
 import addProductRoutes from "./routes/addProductRoutes.js";
 import productCategoryRoutes from "./routes/productCategoryRoutes.js";
@@ -13,7 +12,6 @@ import orderRoutes from "./routes/orderRoutes.js";
 import customerRegisterRoutes from "./routes/CustomerRegisterRouter.js";
 import StockRouter  from './routes/StockRouter.js';
 dotenv.config();
-
 const app = express();
 
 // ----------- SOCKET.IO SETUP -------------
@@ -49,10 +47,8 @@ app.use(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 // Serve static uploads
 app.use("/uploads", express.static(path.join("uploads")));
-
 // ----------- ROUTES -------------
 app.use("/api/auth", authRoutes);
 app.use("/api/products", addProductRoutes);
