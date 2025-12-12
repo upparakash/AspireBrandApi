@@ -11,6 +11,7 @@ import addSubCategoryRoutes from "./routes/addSubCategoryRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import customerRegisterRoutes from "./routes/CustomerRegisterRouter.js";
 import StockRouter  from './routes/StockRouter.js';
+import bannerRouter from "./routes/BannerRouter.js";
 dotenv.config();
 const app = express();
 
@@ -57,7 +58,7 @@ app.use("/api/subcategories", addSubCategoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/customers", customerRegisterRoutes);
 app.use("/api/stock", StockRouter);
-
+app.use("/api/banner", bannerRouter);
 // ----------- START SERVER -------------
 const PORT = process.env.PORT || 4000;
 
