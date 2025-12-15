@@ -116,9 +116,12 @@ export const getAllOrders = (req, res) => {
 
         // Final Output Format
         const result = orders.map(o => ({
-          id: o.id,
+           id: o.id,
           fullName: o.fullName,
           phone: o.phone,
+          address:o.address,
+          city:o.city,
+          pincode:o.pincode,
           totalAmount: o.totalAmount,
           orderStatus: o.orderStatus,
           createdAt: o.createdAt,
