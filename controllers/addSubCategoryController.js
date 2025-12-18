@@ -39,6 +39,8 @@ const s3Storage = multerS3({
 });
 
 const uploadS3 = multer({ storage: s3Storage });
+// ✅ CKEditor single image upload middleware
+export const uploadEditor = uploadS3.single("upload");
 
 // Middleware for 4 images
 export const upload = uploadS3.fields([
@@ -349,5 +351,23 @@ export const deleteSubCategory = (req, res) => {
     );
   } catch (err) {
     return res.status(500).json({ message: "Server error", err });
+  }
+};
+
+
+
+
+export const uploadEditorImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image uploaded" });
+    }
+
+    return res.status(200).json({
+      url: req.file.location, // CKEditor REQUIRED format
+    });
+  } catch (error) {
+    console.error("CKEditor Upload Error:", error);
+    return res.status(500).json({ message: "Upload failed" });
   }
 };
