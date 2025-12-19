@@ -363,9 +363,9 @@ export const uploadEditorImage = async (req, res) => {
       return res.status(400).json({ message: "No image uploaded" });
     }
 
-    return res.status(200).json({
-      url: req.file.location, // CKEditor REQUIRED format
-    });
+   return res.status(200).json({
+  default: req.file.location, // ✅ REQUIRED
+});
   } catch (error) {
     console.error("CKEditor Upload Error:", error);
     return res.status(500).json({ message: "Upload failed" });
