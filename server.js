@@ -12,6 +12,7 @@ import orderRoutes from "./routes/orderRoutes.js";
 import customerRegisterRoutes from "./routes/CustomerRegisterRouter.js";
 import StockRouter  from './routes/StockRouter.js';
 import bannerRouter from "./routes/BannerRouter.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 dotenv.config();
 const app = express();
 
@@ -59,6 +60,8 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/customers", customerRegisterRoutes);
 app.use("/api/stock", StockRouter);
 app.use("/api/banner", bannerRouter);
+app.use("/api/orders", orderRoutes);
+app.use("/api/payment", paymentRoutes);
 // ----------- START SERVER -------------
 const PORT = process.env.PORT || 4000;
 

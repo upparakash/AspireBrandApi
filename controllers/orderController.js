@@ -24,50 +24,84 @@ function groupItemsByOrder(rows) {
 // -----------------------------
 export const placeOrder = (req, res) => {
   try {
-    const { fullName, phone, address, city, pincode, items, totalAmount } = req.body;
+    const {
+      fullName,
+      phone,
+      address,
+      city,
+      pincode,
+      items,
+      totalAmount,
+      paymentMethod = "COD",
+      paymentStatus = "PENDING",
+      razorpayOrderId = null,
+      razorpayPaymentId = null,
+    } = req.body;
 
     if (!fullName || !phone || !address || !city || !pincode || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
-    const insertOrderSql = `INSERT INTO orders (fullName, phone, address, city, pincode, totalAmount) VALUES (?, ?, ?, ?, ?, ?)`;
-    db.query(insertOrderSql, [fullName, phone, address, city, pincode, totalAmount], (err, orderResult) => {
-      if (err) return res.status(500).json({ success: false, message: "DB error" });
+    const insertOrderSql = `
+      INSERT INTO orders 
+      (fullName, phone, address, city, pincode, totalAmount, paymentMethod, paymentStatus, razorpayOrderId, razorpayPaymentId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-      const orderId = orderResult.insertId;
+    db.query(
+      insertOrderSql,
+      [
+        fullName,
+        phone,
+        address,
+        city,
+        pincode,
+        totalAmount,
+        paymentMethod,
+        paymentStatus,
+        razorpayOrderId,
+        razorpayPaymentId,
+      ],
+      (err, orderResult) => {
+        if (err) return res.status(500).json({ success: false, message: "DB error" });
 
-      // bulk insert
-      const values = items.map(it => [
-        orderId,
-        it.id ?? null,
-        it.name ?? it.productName ?? "Unknown",
-        it.price ?? 0,
-        it.qty ?? it.quantity ?? 1,
-        it.imageUri ?? it.imageUrl ?? null,
-        "Pending",  // ✅ Default itemStatus
-      ]);
+        const orderId = orderResult.insertId;
 
-      const insertItemsSql = `
-        INSERT INTO order_items (orderId, productId, productName, price, quantity, imageUrl, itemStatus)
-        VALUES ?
-      `;
-      db.query(insertItemsSql, [values], (err2) => {
-        if (err2) return res.status(500).json({ success: false, message: "DB error inserting items" });
-
-        return res.json({
-          success: true,
-          message: "Order placed successfully",
+        const values = items.map(it => [
           orderId,
-          status: "Pending",
-          itemsCount: items.length,
-          totalAmount,
+          it.id ?? null,
+          it.name ?? it.productName ?? "Unknown",
+          it.price ?? 0,
+          it.qty ?? it.quantity ?? 1,
+          it.imageUri ?? it.imageUrl ?? null,
+          "Pending",
+        ]);
+
+        const insertItemsSql = `
+          INSERT INTO order_items 
+          (orderId, productId, productName, price, quantity, imageUrl, itemStatus)
+          VALUES ?
+        `;
+
+        db.query(insertItemsSql, [values], (err2) => {
+          if (err2) return res.status(500).json({ success: false, message: "DB error inserting items" });
+
+          return res.json({
+            success: true,
+            message: "Order placed successfully",
+            orderId,
+            paymentMethod,
+            paymentStatus,
+            totalAmount,
+          });
         });
-      });
-    });
-  } catch (error) {
+      }
+    );
+  } catch {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 // -----------------------------
 // GET ALL ORDERS
@@ -116,7 +150,7 @@ export const getAllOrders = (req, res) => {
 
         // Final Output Format
         const result = orders.map(o => ({
-           id: o.id,
+          id: o.id,
           fullName: o.fullName,
           phone: o.phone,
           address:o.address,
