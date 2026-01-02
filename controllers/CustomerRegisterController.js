@@ -176,42 +176,108 @@ export const updateUserProfile = (req, res) => {
   const { fullName, email, phone } = req.body;
   const newProfileUrl = req.file?.location;
 
-  console.log("📝 Update Body:", req.body);
-  console.log("🖼️ Uploaded New File:", req.file);
+  console.log(" User ID from token:", userId);
+  console.log(" Update Body:", req.body);
+  console.log(" Uploaded New File:", req.file);
 
-  // 1️⃣ Fetch old profile
-  db.query("SELECT profile FROM customers WHERE id = ?", [userId], async (err, results) => {
-    if (err) {
-      console.error("❌ Fetch old profile error:", err);
-      return res.status(500).json({ success: false, message: "Error fetching old profile" });
-    }
-
-    const oldProfileUrl = results[0]?.profile;
-    const oldS3Key = getS3KeyFromUrl(oldProfileUrl);
-
-    // 2️⃣ Delete old S3 file if new one uploaded
-    if (newProfileUrl && oldS3Key) {
-      try {
-        await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: oldS3Key }));
-        console.log("🗑️ Old profile image deleted from S3");
-      } catch (deleteErr) {
-        console.error("⚠️ Failed to delete old image:", deleteErr);
-      }
-    }
-
-    // 3️⃣ Update user record
-    const updateSql = `
-      UPDATE customers 
-      SET fullName = ?, email = ?, phone = ?, profile = COALESCE(?, profile)
-      WHERE id = ?`;
-
-    db.query(updateSql, [fullName, email, phone, newProfileUrl, userId], (updateErr) => {
-      if (updateErr) {
-        console.error("❌ Update error:", updateErr);
-        return res.status(500).json({ success: false, message: "Error updating profile" });
-      }
-
-      res.json({ success: true, message: "Profile updated successfully" });
+  // CRITICAL CHECK
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or missing token user",
     });
+  }
+
+  //  Fetch old profile
+  db.query(
+    "SELECT profile FROM customers WHERE id = ?",
+    [userId],
+    async (err, results) => {
+      if (err) {
+        console.error("❌ Fetch old profile error:", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Error fetching old profile" });
+      }
+
+      if (results.length === 0) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      const oldProfileUrl = results[0].profile;
+      const oldS3Key = getS3KeyFromUrl(oldProfileUrl);
+
+      // 2 Delete old S3 file if new one uploaded
+      if (newProfileUrl && oldS3Key) {
+        try {
+          await s3.send(
+            new DeleteObjectCommand({
+              Bucket: S3_BUCKET,
+              Key: oldS3Key,
+            })
+          );
+          console.log("🗑️ Old profile image deleted from S3");
+        } catch (deleteErr) {
+          console.error("⚠️ Failed to delete old image:", deleteErr);
+        }
+      }
+
+      //  Update user record
+      const updateSql = `
+        UPDATE customers
+        SET fullName = ?, email = ?, phone = ?, profile = COALESCE(?, profile)
+        WHERE id = ?
+      `;
+
+      db.query(
+        updateSql,
+        [fullName, email, phone, newProfileUrl, userId],
+        (updateErr, result) => {
+         if (updateErr) {
+  console.error("❌ Update error:", updateErr);
+
+  // ✅ DUPLICATE ENTRY HANDLING
+  if (updateErr.code === "ER_DUP_ENTRY") {
+    if (updateErr.sqlMessage.includes("customers.phone")) {
+      return res.status(409).json({
+        success: false,
+        errorType: "DUPLICATE_PHONE",
+        message: "Phone number already exists",
+      });
+    }
+
+    if (updateErr.sqlMessage.includes("customers.email")) {
+      return res.status(409).json({
+        success: false,
+        errorType: "DUPLICATE_EMAIL",
+        message: "Email already exists",
+      });
+    }
+  }
+
+  return res.status(500).json({
+    success: false,
+    message: "Error updating profile",
   });
+}
+
+
+          // 🔥 MOST IMPORTANT CHECK
+          if (result.affectedRows === 0) {
+            return res.status(400).json({
+              success: false,
+              message: "Profile not updated (no changes or invalid user)",
+            });
+          }
+
+          res.json({
+            success: true,
+            message: "Profile updated successfully",
+          });
+        }
+      );
+    }
+  );
 };
