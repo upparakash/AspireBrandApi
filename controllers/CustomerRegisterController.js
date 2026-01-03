@@ -52,7 +52,7 @@ function getS3KeyFromUrl(url) {
   }
 }
 
-// -------------------- 👤 REGISTER --------------------
+// --------------------  REGISTER --------------------
 export const registerUser = (req, res) => {
   const { fullName, email, phone, password } = req.body;
   const profileUrl = req.file?.location || null;
@@ -104,7 +104,7 @@ export const registerUser = (req, res) => {
 };
 
 
-// -------------------- 🔐 LOGIN --------------------
+// --------------------  LOGIN --------------------
 export const loginUser = (req, res) => {
   const { email, password } = req.body;
   console.log("🔐 Login Attempt:", email);
@@ -149,7 +149,7 @@ export const loginUser = (req, res) => {
   });
 };
 
-// -------------------- 👀 GET PROFILE --------------------
+// --------------------  GET PROFILE --------------------
 export const getUserProfile = (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -170,7 +170,7 @@ export const getUserProfile = (req, res) => {
   });
 };
 
-// -------------------- ✏️ UPDATE PROFILE --------------------
+// --------------------  UPDATE PROFILE --------------------
 export const updateUserProfile = (req, res) => {
   const userId = req.user?.id;
   const { fullName, email, phone } = req.body;
@@ -264,7 +264,7 @@ export const updateUserProfile = (req, res) => {
 }
 
 
-          // 🔥 MOST IMPORTANT CHECK
+          //  MOST IMPORTANT CHECK
           if (result.affectedRows === 0) {
             return res.status(400).json({
               success: false,
@@ -280,4 +280,130 @@ export const updateUserProfile = (req, res) => {
       );
     }
   );
+};
+
+
+
+export const updatePassword = (req, res) => {
+  const userId = req.user.id;
+  const { oldPassword, newPassword } = req.body;
+
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: "Fill both fields" });
+  }
+
+  db.query(
+    "SELECT password FROM customers WHERE id = ?",   
+    [userId],
+    async (err, results) => {
+      if (err) {
+        console.error("DB error:", err);
+        return res.status(500).json({ success: false, message: "DB error" });
+      }
+
+      if (!results.length) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+
+      const storedHash = results[0].password;
+
+      
+      const isMatch = await bcrypt.compare(oldPassword, storedHash);
+
+      
+
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Old password is incorrect",
+        });
+      }
+
+      const newHash = await bcrypt.hash(newPassword, 10);
+
+      db.query(
+        "UPDATE customers SET password = ? WHERE id = ?",  
+        [newHash, userId],
+        (err2) => {
+          if (err2) {
+            console.error("Update error:", err2);
+            return res.status(500).json({
+              success: false,
+              message: "Failed to update password",
+            });
+          }
+
+          return res.json({
+            success: true,
+            message: "Password updated successfully",
+          });
+        }
+      );
+    }
+  );
+};
+
+
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { emailOrPhone, newPassword } = req.body;
+
+    if (!emailOrPhone || !newPassword) {
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required" });
+    }
+
+    // 🔍 STEP 1: VERIFY USER BY EMAIL OR PHONE
+    const findUserSql =
+      "SELECT id FROM customers WHERE email = ? OR phone = ?";
+
+    db.query(
+      findUserSql,
+      [emailOrPhone, emailOrPhone],
+      async (err, users) => {
+        if (err) {
+          console.error("DB error:", err);
+          return res
+            .status(500)
+            .json({ success: false, message: "Database error" });
+        }
+
+        if (!users.length) {
+          return res
+            .status(404)
+            .json({ success: false, message: "User not found" });
+        }
+
+        const userId = users[0].id;
+
+        // 🔐 STEP 2: HASH NEW PASSWORD
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // 🔁 STEP 3: UPDATE PASSWORD
+        const updateSql =
+          "UPDATE customers SET password = ? WHERE id = ?";
+
+        db.query(updateSql, [hashedPassword, userId], (err2) => {
+          if (err2) {
+            console.error("Password update error:", err2);
+            return res
+              .status(500)
+              .json({ success: false, message: "Failed to update password" });
+          }
+
+          return res.json({
+            success: true,
+            message: "Password updated successfully",
+          });
+        });
+      }
+    );
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error" });
+  }
 };

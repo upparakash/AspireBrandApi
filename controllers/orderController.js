@@ -24,6 +24,14 @@ function groupItemsByOrder(rows) {
 // -----------------------------
 export const placeOrder = (req, res) => {
   try {
+    // 🔍 AUTH DEBUG
+    console.log("===== PLACE ORDER START =====");
+    console.log("Authorization Header:", req.headers.authorization);
+    console.log("Decoded User (req.user):", req.user);
+
+    const userId = req.user?.id || null;
+    console.log("User ID extracted:", userId);
+
     const {
       fullName,
       phone,
@@ -38,19 +46,58 @@ export const placeOrder = (req, res) => {
       razorpayPaymentId = null,
     } = req.body;
 
-    if (!fullName || !phone || !address || !city || !pincode || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
+    // 🔍 BODY DEBUG
+    console.log("Order Request Body:", {
+      fullName,
+      phone,
+      address,
+      city,
+      pincode,
+      totalAmount,
+      paymentMethod,
+      itemsCount: items?.length,
+    });
+
+    if (
+      !fullName ||
+      !phone ||
+      !address ||
+      !city ||
+      !pincode ||
+      !Array.isArray(items) ||
+      items.length === 0
+    ) {
+      console.warn("❌ Validation failed: Missing required fields");
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing required fields" });
     }
+
+    // 🔍 SQL DEBUG
+    console.log("Inserting order with user_id:", userId);
 
     const insertOrderSql = `
       INSERT INTO orders 
-      (fullName, phone, address, city, pincode, totalAmount, paymentMethod, paymentStatus, razorpayOrderId, razorpayPaymentId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (
+        user_id,
+        fullName,
+        phone,
+        address,
+        city,
+        pincode,
+        totalAmount,
+        paymentMethod,
+        paymentStatus,
+        razorpayOrderId,
+        razorpayPaymentId
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     db.query(
       insertOrderSql,
       [
+        userId,
         fullName,
         phone,
         address,
@@ -63,28 +110,45 @@ export const placeOrder = (req, res) => {
         razorpayPaymentId,
       ],
       (err, orderResult) => {
-        if (err) return res.status(500).json({ success: false, message: "DB error" });
+        if (err) {
+          console.error("❌ Order insert error:", err);
+          return res.status(500).json({ success: false, message: "DB error" });
+        }
 
         const orderId = orderResult.insertId;
+        console.log("✅ Order inserted. Order ID:", orderId);
 
-        const values = items.map(it => [
-          orderId,
-          it.id ?? null,
-          it.name ?? it.productName ?? "Unknown",
-          it.price ?? 0,
-          it.qty ?? it.quantity ?? 1,
-          it.imageUri ?? it.imageUrl ?? null,
-          "Pending",
-        ]);
+        const values = items.map((it, index) => {
+          console.log(`Item ${index + 1}:`, it);
+          return [
+            orderId,
+            it.id ?? null,
+            it.name ?? it.productName ?? "Unknown",
+            it.price ?? 0,
+            it.qty ?? it.quantity ?? 1,
+            it.imageUri ?? it.imageUrl ?? null,
+            "Pending",
+          ];
+        });
+
+        console.log("Inserting order items:", values.length);
 
         const insertItemsSql = `
-          INSERT INTO order_items 
+          INSERT INTO order_items
           (orderId, productId, productName, price, quantity, imageUrl, itemStatus)
           VALUES ?
         `;
 
         db.query(insertItemsSql, [values], (err2) => {
-          if (err2) return res.status(500).json({ success: false, message: "DB error inserting items" });
+          if (err2) {
+            console.error("❌ Order items insert error:", err2);
+            return res
+              .status(500)
+              .json({ success: false, message: "DB error inserting items" });
+          }
+
+          console.log("✅ Order items inserted successfully");
+          console.log("===== PLACE ORDER END =====");
 
           return res.json({
             success: true,
@@ -97,10 +161,53 @@ export const placeOrder = (req, res) => {
         });
       }
     );
-  } catch {
+  } catch (error) {
+    console.error("🔥 Place order fatal error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+// controllers/orderController.js
+export const getMyOrders = (req, res) => {
+ 
+
+  const userId = req.user.id;
+ 
+
+  const sql = `SELECT * FROM orders WHERE user_id = ?`;
+
+  db.query(sql, [userId], (err, orders) => {
+    if (err) {
+      console.error("DB error:", err);
+      return res.status(500).json({ success: false });
+    }
+
+   
+
+    if (orders.length === 0) {
+      return res.json({ success: true, orders: [] });
+    }
+
+    const orderIds = orders.map(o => o.id);
+
+    const itemsSql = `SELECT * FROM order_items WHERE orderId IN (?)`;
+
+    db.query(itemsSql, [orderIds], (err2, items) => {
+      
+
+      const result = orders.map(o => ({
+        ...o,
+        items: items.filter(i => i.orderId === o.id),
+      }));
+
+      res.json({ success: true, orders: result });
+    });
+  });
+};
+
+
+
+
 
 
 // -----------------------------

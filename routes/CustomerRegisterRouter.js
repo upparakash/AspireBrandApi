@@ -5,6 +5,8 @@ import {
   getUserProfile,
   updateUserProfile,
   uploadCategory,
+  updatePassword,
+forgotPassword,
 } from "../controllers/CustomerRegisterController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
@@ -14,5 +16,6 @@ router.post("/register", uploadCategory.single("profile"), registerUser);
 router.post("/login", loginUser);
 router.get("/profile", verifyToken, getUserProfile);
 router.put("/profile", verifyToken, uploadCategory.single("profile"), updateUserProfile);
-
+router.put("/update-password", verifyToken, updatePassword);
+router.post("/forgot-password", forgotPassword);
 export default router;
